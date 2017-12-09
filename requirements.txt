@@ -1,0 +1,6 @@
+pandas
+matplotlib
+scipy
+ipython
+requests[socks]
+stem
