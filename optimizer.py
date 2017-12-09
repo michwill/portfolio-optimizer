@@ -2,11 +2,13 @@
 import json
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy import optimize
 
 currencies = ['bitcoin', 'litecoin', 'ethereum', 'dash', 'waves']
 data = {}
 max_all = 0
 min_all = 0
+steps = 1000
 
 
 def read(currency):
@@ -45,16 +47,33 @@ def price_func(start, stop, **currencies):
                 data[cur][(times >= start) * (times < stop)][:, 1],
                 kind='cubic')
 
-    def f(t):
+    def f(t, **currencies2):
         out = None
-        for cur, val in currencies.items():
-            if not out:
+        for cur in currencies:
+            val = currencies2.get(cur, currencies[cur])
+            if out is None:
                 out = splines[cur](t) * val
             else:
                 out += splines[cur](t) * val
         return out
 
     return f
+
+
+def logdrop(f, start, stop, **currencies):
+    """
+    Calculates sum(log(price) * t, t>=current) drop of the price in future
+    Optimum portfolio should minimize this drop
+    """
+    prices = f(np.linspace(start, stop, steps), **currencies)
+    prices = np.log(prices)
+
+    drop = 0.0
+    for i in range(len(prices) - 2):
+        diffs = prices[i] - prices[i + 1:]
+        drop += diffs[diffs < 0].sum()
+
+    return drop / (len(prices) - 2)
 
 
 if __name__ == '__main__':
