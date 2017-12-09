@@ -24,10 +24,11 @@ def read_all():
 
     for currency in currencies:
         data[currency] = read(currency)
-        max_all = int(max(data[currency][:, 0].max(), max_all))
-        if not min_all:
-            min_all = max_all
-        min_all = int(min(data[currency][:, 0].min(), min_all))
+        if not max_all:
+            min_all = data[currency][:, 0].max()
+        else:
+            max_all = int(min(data[currency][:, 0].max(), max_all))
+        min_all = int(max(data[currency][:, 0].min(), min_all))
 
 
 def slice(start, stop):
@@ -76,10 +77,27 @@ def logdrop(f, start, stop, **currencies):
     return drop / (len(prices) - 2)
 
 
+def fit(start, stop):
+    depo = 1000.0
+    # Start with equal portfolio
+    cc = {cur: depo / len(currencies) / data[cur][-1, 1]
+          for cur in currencies}
+    f = price_func(start, stop, **cc)
+    # We'll optimize all but bitcoin (assume that Bitcoin should always be
+    # present)
+    pnames = [cur for cur in currencies if cur != 'bitcoin']
+    params = np.array([cc[cur] for cur in pnames])
+    stop2 = stop - 86400 // 2
+
+    def target(p):
+        return logdrop(
+                f, start, stop2,
+                **dict(zip(pnames, p)))
+
+    return optimize.minimize(target, params, method='Powell')
+
+
 if __name__ == '__main__':
     read_all()
-    f = price_func(max_all - 30 * 86400 * 2, max_all,
-                   bitcoin=1, litecoin=1, dash=1,
-                   ethereum=1, waves=1)
     import IPython
     IPython.embed()
