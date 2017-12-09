@@ -15,7 +15,7 @@ def download(currency: str, t1: int, t2: int) -> list:
     t1 *= 1000
     t2 *= 1000
 
-    for i in range(3):
+    for i in range(20):
         try:
             url = url_template.format(currency=currency, t1=t1, t2=t2)
             resp = tor_session.get(url)
@@ -23,13 +23,17 @@ def download(currency: str, t1: int, t2: int) -> list:
             resp.close()
 
             return data['price_usd']
-        except:
+
+        except KeyboardInterrupt:
             raise
+
+        except:
+            time.sleep(10)
             tortools.change_tor_ip()
             tor_session = tortools.get_tor_session()
             print('Changed Tor IP')
 
-    raise Exception('We tried to change tor IP 3 times - no success')
+    raise Exception('We tried to change tor IP 20 times - no success')
 
 
 def download_all(currency: str) -> list:
@@ -51,5 +55,5 @@ def download_all(currency: str) -> list:
 if __name__ == '__main__':
     data = download_all('bitcoin')
     print(len(data))
-    with open('data/bitcoin.json', 'wb') as f:
+    with open('data/bitcoin.json', 'w') as f:
         json.dump(data, f)
