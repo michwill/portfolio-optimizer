@@ -2,6 +2,7 @@
 import time
 import json
 import tortools
+import sys
 
 url_template = "https://graphs.coinmarketcap.com/currencies/{currency}/{t1}/{t2}/"
 time_period = 365  # days
@@ -53,7 +54,12 @@ def download_all(currency: str) -> list:
 
 
 if __name__ == '__main__':
-    data = download_all('bitcoin')
+    if len(sys.argv) > 1:
+        currency = sys.argv[1]
+    else:
+        currency = 'bitcoin'
+
+    data = download_all(currency)
     print(len(data))
-    with open('data/bitcoin.json', 'w') as f:
+    with open('data/%s.json' % currency, 'w') as f:
         json.dump(data, f)
