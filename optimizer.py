@@ -13,7 +13,8 @@ data = {}
 max_all = 0
 min_all = 0
 steps = 1000
-hodl_time = 7
+hodl_time = 3
+sell_horizon = 10
 days = 100
 
 
@@ -82,13 +83,15 @@ def logdrop(f, start, stop, **cur):
     cprices = {c: f(times, **kw) for c, kw in args.items()}
 
     for i in range(steps - 2):
-        if times[-1] - times[i + 1] < hodl_time * 86400:
+        if times[-1] - times[i + 1] < sell_horizon * 86400:
             break
         prices = [1000.0 * cur[c] / cprices[c][i] * cprices[c] for c in currencies]
         prices = np.array(prices).sum(axis=0)
         prices = np.log(prices)
         diffs = prices[i + 1:] - prices[i]
-        diffs = diffs[times[i + 1:] - times[i] > hodl_time * 86400]
+        dt = times[i + 1:] - times[i]
+        diffs = diffs[(dt > hodl_time * 86400) *
+                      (dt < sell_horizon * 86400)]
         drop += (diffs < 0).mean()
         ctr += 1
 
