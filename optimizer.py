@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 import json
 import numpy as np
+from copy import copy
 from scipy.interpolate import interp1d
 from scipy import optimize
-from random import random
+# from random import random
 
-currencies = ['bitcoin', 'litecoin', 'ethereum', 'dash', 'waves']
-base_currency = 'bitcoin'
+currencies = [
+        'litecoin', 'ethereum', 'dash', 'waves', 'zcash']
+base_currency = 'ethereum'
 data = {}
 max_all = 0
 min_all = 0
 steps = 1000
-hodl_time = 3
+hodl_time = 7
+days = 100
 
 
 def read(currency):
@@ -54,46 +57,49 @@ def price_func(start, stop, **currencies):
     def f(t, **currencies2):
         out = None
         for cur in currencies:
-            val = abs(currencies2.get(cur, currencies[cur]))
+            val = currencies2.get(cur, currencies[cur])
             if out is None:
-                out = splines[cur](t) * val
+                out = val and val * splines[cur](t)
             else:
-                out += splines[cur](t) * val
+                out += val and val * splines[cur](t)
         return out
 
     return f
 
 
-def logdrop(f, start, stop, **currencies):
+def logdrop(f, start, stop, **cur):
     """
     Calculates sum(log(price) * t, t>=current) drop of the price in future
     Optimum portfolio should minimize this drop
     """
     times = np.linspace(start, stop, steps)
-    prices = f(times, **currencies)
-    prices = np.log(prices)
-
     drop = 0.0
     ctr = 0
-    for i in range(len(prices) - 2):
+    zeros = {k: 0 for k in currencies}
+    args = {c: copy(zeros) for c in currencies}
+    for c in currencies:
+        args[c][c] = 1
+    cprices = {c: f(times, **kw) for c, kw in args.items()}
+
+    for i in range(steps - 2):
         if times[-1] - times[i + 1] < hodl_time * 86400:
             break
+        prices = [1000.0 * cur[c] / cprices[c][i] * cprices[c] for c in currencies]
+        prices = np.array(prices).sum(axis=0)
+        prices = np.log(prices)
         diffs = prices[i + 1:] - prices[i]
         diffs = diffs[times[i + 1:] - times[i] > hodl_time * 86400]
         drop += (diffs < 0).mean()
         ctr += 1
 
-    if random() < 0.01:
-        print(drop / ctr, currencies)
+    print(drop / ctr, cur)
 
     return drop / ctr
 
 
 def fit(start, stop):
-    depo = 1000.0
     # Start with equal portfolio
-    cc = {cur: depo / len(currencies) / data[cur][-1, 1]
-          for cur in currencies}
+    cc = {cur: 1 / len(currencies) for cur in currencies}
     f = price_func(start - 86400 // 2, stop + 86400 // 2, **cc)
     # We'll optimize all but bitcoin (assume that Bitcoin should always be
     # present)
@@ -102,14 +108,17 @@ def fit(start, stop):
 
     def target(p):
         pp = dict(zip(pnames, p))
-        pp[base_currency] = cc[base_currency]
+        pp[base_currency] = 1 - sum(pp.values())
+        if pp[base_currency] < 0:
+            return 100
         return logdrop(
                 f, start, stop, **pp)
 
     opt = optimize.basinhopping(
-            target, params, T=100, niter=10000,
+            target, params, T=100, niter=10000, stepsize=max(params),
             minimizer_kwargs=dict(method="L-BFGS-B",
-                                  bounds=[[0, i * 1000] for i in params]))
+                                  bounds=[[0, 1] for i in params],
+                                  options={'eps': 1e-4, 'ftol': 1e-6}))
 #            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
     out[base_currency] = cc[base_currency]
@@ -118,4 +127,4 @@ def fit(start, stop):
 
 if __name__ == '__main__':
     read_all()
-    print(fit(max_all - 86400 * 65, max_all - 86400 * 5))
+    print(fit(max_all - 86400 * (days + 5), max_all - 86400 * 5))
