@@ -4,10 +4,11 @@ import numpy as np
 from copy import copy
 from scipy.interpolate import interp1d
 from scipy import optimize
+from pprint import pprint
 # from random import random
 
-# currencies = ['litecoin', 'ethereum', 'dash', 'waves', 'zcash']
-currencies = ['litecoin', 'ethereum']
+currencies = ['litecoin', 'ethereum', 'zcash', 'dash', 'waves', 'monero',
+              'ethereum-classic', 'neo', 'nem', 'bitcoin-cash']
 base_currency = 'ethereum'
 data = {}
 max_all = 0
@@ -124,7 +125,7 @@ def fit(start, stop):
                 f, start, stop, **pp)
 
     opt = optimize.basinhopping(
-            target, params, T=1, niter=1000, stepsize=0.5,
+            target, params, T=1, niter=5000, stepsize=0.5,
             callback=logger,
             minimizer_kwargs=dict(method="L-BFGS-B",
                                   bounds=[[0, 1] for i in params]))
@@ -135,4 +136,4 @@ def fit(start, stop):
 
 if __name__ == '__main__':
     read_all()
-    print(fit(max_all - 86400 * (days + sell_horizon), max_all - 86400 * sell_horizon))
+    pprint(fit(max_all - 86400 * (days + sell_horizon), max_all - 86400 * sell_horizon))
