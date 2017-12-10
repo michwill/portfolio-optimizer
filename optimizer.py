@@ -9,7 +9,7 @@ currencies = ['bitcoin', 'litecoin', 'ethereum', 'dash', 'waves']
 data = {}
 max_all = 0
 min_all = 0
-steps = 200
+steps = 500
 
 
 def read(currency):
@@ -73,8 +73,7 @@ def logdrop(f, start, stop, **currencies):
     drop = 0.0
     for i in range(len(prices) - 2):
         diffs = prices[i + 1:] - prices[i]
-        drop += (diffs < 0).sum()
-        # drop += -diffs[diffs < 0].sum()
+        drop += (diffs < 0).mean()
 
     if random() < 0.01:
         print(drop / (len(prices) - 2), currencies)
@@ -99,15 +98,15 @@ def fit(start, stop):
                 **dict(zip(pnames, p)))
 
     opt = optimize.basinhopping(
-            target, params, T=100, niter=1000,
+            target, params, T=100, niter=10000,
             minimizer_kwargs=dict(method="L-BFGS-B",
                                   bounds=[[0, i * 1000] for i in params]))
 #            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
     out['bitcoin'] = cc['bitcoin']
-    return out
+    return target(opt['x']), out
 
 
 if __name__ == '__main__':
     read_all()
-    print(fit(max_all - 86400 * 60, max_all - 86400))
+    print(fit(max_all - 86400 * 200, max_all - 86400))
