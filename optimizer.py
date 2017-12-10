@@ -6,10 +6,12 @@ from scipy import optimize
 from random import random
 
 currencies = ['bitcoin', 'litecoin', 'ethereum', 'dash', 'waves']
+base_currency = 'bitcoin'
 data = {}
 max_all = 0
 min_all = 0
-steps = 500
+steps = 1000
+hodl_time = 3
 
 
 def read(currency):
@@ -67,18 +69,24 @@ def logdrop(f, start, stop, **currencies):
     Calculates sum(log(price) * t, t>=current) drop of the price in future
     Optimum portfolio should minimize this drop
     """
-    prices = f(np.linspace(start, stop, steps), **currencies)
+    times = np.linspace(start, stop, steps)
+    prices = f(times, **currencies)
     prices = np.log(prices)
 
     drop = 0.0
+    ctr = 0
     for i in range(len(prices) - 2):
+        if times[-1] - times[i + 1] < hodl_time * 86400:
+            break
         diffs = prices[i + 1:] - prices[i]
+        diffs = diffs[times[i + 1:] - times[i] > hodl_time * 86400]
         drop += (diffs < 0).mean()
+        ctr += 1
 
     if random() < 0.01:
-        print(drop / (len(prices) - 2), currencies)
+        print(drop / ctr, currencies)
 
-    return drop / (len(prices) - 2)
+    return drop / ctr
 
 
 def fit(start, stop):
@@ -89,13 +97,14 @@ def fit(start, stop):
     f = price_func(start - 86400 // 2, stop + 86400 // 2, **cc)
     # We'll optimize all but bitcoin (assume that Bitcoin should always be
     # present)
-    pnames = [cur for cur in currencies if cur != 'bitcoin']
+    pnames = [cur for cur in currencies if cur != base_currency]
     params = np.array([cc[cur] for cur in pnames])
 
     def target(p):
+        pp = dict(zip(pnames, p))
+        pp[base_currency] = cc[base_currency]
         return logdrop(
-                f, start, stop, bitcoin=cc['bitcoin'],
-                **dict(zip(pnames, p)))
+                f, start, stop, **pp)
 
     opt = optimize.basinhopping(
             target, params, T=100, niter=10000,
@@ -103,10 +112,10 @@ def fit(start, stop):
                                   bounds=[[0, i * 1000] for i in params]))
 #            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
-    out['bitcoin'] = cc['bitcoin']
+    out[base_currency] = cc[base_currency]
     return target(opt['x']), out
 
 
 if __name__ == '__main__':
     read_all()
-    print(fit(max_all - 86400 * 200, max_all - 86400))
+    print(fit(max_all - 86400 * 65, max_all - 86400 * 5))
