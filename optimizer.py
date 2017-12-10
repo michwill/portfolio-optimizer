@@ -95,7 +95,7 @@ def logdrop(f, start, stop, **cur):
         drop += (diffs < 0).mean()
         ctr += 1
 
-    print(drop / ctr, cur)
+    # print(drop / ctr, cur)
 
     return drop / ctr
 
@@ -109,6 +109,12 @@ def fit(start, stop):
     pnames = [cur for cur in currencies if cur != base_currency]
     params = np.array([cc[cur] for cur in pnames])
 
+    def logger(x, f, accept):
+        if f != 100:
+            out = dict(zip(pnames, x))
+            out[base_currency] = 1 - sum(out.values())
+            print(f, out)
+
     def target(p):
         pp = dict(zip(pnames, p))
         pp[base_currency] = 1 - sum(pp.values())
@@ -119,6 +125,7 @@ def fit(start, stop):
 
     opt = optimize.basinhopping(
             target, params, T=100, niter=10000, stepsize=0.5,
+            callback=logger,
             minimizer_kwargs=dict(method="L-BFGS-B",
                                   bounds=[[0, 1] for i in params],
                                   options={'eps': 1e-5, 'ftol': 1e-6}))
