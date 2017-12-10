@@ -5,7 +5,6 @@ from copy import copy
 from scipy.interpolate import interp1d
 from scipy import optimize
 from pprint import pprint
-# from random import random
 
 currencies = ['litecoin', 'ethereum', 'zcash', 'dash', 'waves', 'monero',
               'ethereum-classic', 'neo', 'nem', 'bitcoin-cash']
@@ -95,8 +94,6 @@ def logdrop(f, start, stop, **cur):
                       (dt < sell_horizon * 86400)]
         drop += (diffs < 0).mean()
         ctr += 1
-
-    # print(drop / ctr, cur)
 
     return drop / ctr
 
