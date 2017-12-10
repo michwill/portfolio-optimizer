@@ -6,8 +6,8 @@ from scipy.interpolate import interp1d
 from scipy import optimize
 # from random import random
 
-currencies = [
-        'litecoin', 'ethereum', 'dash', 'waves', 'zcash']
+# currencies = ['litecoin', 'ethereum', 'dash', 'waves', 'zcash']
+currencies = ['litecoin', 'ethereum']
 base_currency = 'ethereum'
 data = {}
 max_all = 0
@@ -124,12 +124,10 @@ def fit(start, stop):
                 f, start, stop, **pp)
 
     opt = optimize.basinhopping(
-            target, params, T=100, niter=10000, stepsize=0.5,
+            target, params, T=1, niter=1000, stepsize=0.5,
             callback=logger,
             minimizer_kwargs=dict(method="L-BFGS-B",
                                   bounds=[[0, 1] for i in params]))
-                                  # options={'eps': 1e-5, 'ftol': 1e-6}))
-#            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
     out[base_currency] = 1 - sum(out.values())
     return target(opt['x']), out
