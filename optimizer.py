@@ -14,7 +14,7 @@ max_all = 0
 min_all = 0
 steps = 1000
 hodl_time = 3
-sell_horizon = 10
+sell_horizon = 14
 days = 100
 
 
@@ -127,8 +127,8 @@ def fit(start, stop):
             target, params, T=100, niter=10000, stepsize=0.5,
             callback=logger,
             minimizer_kwargs=dict(method="L-BFGS-B",
-                                  bounds=[[0, 1] for i in params],
-                                  options={'eps': 1e-5, 'ftol': 1e-6}))
+                                  bounds=[[0, 1] for i in params]))
+                                  # options={'eps': 1e-5, 'ftol': 1e-6}))
 #            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
     out[base_currency] = 1 - sum(out.values())
@@ -137,4 +137,4 @@ def fit(start, stop):
 
 if __name__ == '__main__':
     read_all()
-    print(fit(max_all - 86400 * (days + 5), max_all - 86400 * 5))
+    print(fit(max_all - 86400 * (days + sell_horizon), max_all - 86400 * sell_horizon))
