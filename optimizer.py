@@ -3,12 +3,13 @@ import json
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import optimize
+from random import random
 
 currencies = ['bitcoin', 'litecoin', 'ethereum', 'dash', 'waves']
 data = {}
 max_all = 0
 min_all = 0
-steps = 1000
+steps = 200
 
 
 def read(currency):
@@ -25,7 +26,7 @@ def read_all():
     for currency in currencies:
         data[currency] = read(currency)
         if not max_all:
-            min_all = data[currency][:, 0].max()
+            max_all = int(data[currency][:, 0].max())
         else:
             max_all = int(min(data[currency][:, 0].max(), max_all))
         min_all = int(max(data[currency][:, 0].min(), min_all))
@@ -51,7 +52,7 @@ def price_func(start, stop, **currencies):
     def f(t, **currencies2):
         out = None
         for cur in currencies:
-            val = currencies2.get(cur, currencies[cur])
+            val = abs(currencies2.get(cur, currencies[cur]))
             if out is None:
                 out = splines[cur](t) * val
             else:
@@ -71,8 +72,12 @@ def logdrop(f, start, stop, **currencies):
 
     drop = 0.0
     for i in range(len(prices) - 2):
-        diffs = prices[i] - prices[i + 1:]
-        drop += diffs[diffs < 0].sum()
+        diffs = prices[i + 1:] - prices[i]
+        drop += (diffs < 0).sum()
+        # drop += -diffs[diffs < 0].sum()
+
+    if random() < 0.01:
+        print(drop / (len(prices) - 2), currencies)
 
     return drop / (len(prices) - 2)
 
@@ -82,22 +87,27 @@ def fit(start, stop):
     # Start with equal portfolio
     cc = {cur: depo / len(currencies) / data[cur][-1, 1]
           for cur in currencies}
-    f = price_func(start, stop, **cc)
+    f = price_func(start - 86400 // 2, stop + 86400 // 2, **cc)
     # We'll optimize all but bitcoin (assume that Bitcoin should always be
     # present)
     pnames = [cur for cur in currencies if cur != 'bitcoin']
     params = np.array([cc[cur] for cur in pnames])
-    stop2 = stop - 86400 // 2
 
     def target(p):
         return logdrop(
-                f, start, stop2,
+                f, start, stop, bitcoin=cc['bitcoin'],
                 **dict(zip(pnames, p)))
 
-    return optimize.minimize(target, params, method='Powell')
+    opt = optimize.basinhopping(
+            target, params, T=100, niter=1000,
+            minimizer_kwargs=dict(method="L-BFGS-B",
+                                  bounds=[[0, i * 1000] for i in params]))
+#            target, params, T=100, niter=10000,
+    out = dict(zip(pnames, opt['x']))
+    out['bitcoin'] = cc['bitcoin']
+    return out
 
 
 if __name__ == '__main__':
     read_all()
-    import IPython
-    IPython.embed()
+    print(fit(max_all - 86400 * 60, max_all - 86400))
