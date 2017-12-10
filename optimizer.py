@@ -115,13 +115,13 @@ def fit(start, stop):
                 f, start, stop, **pp)
 
     opt = optimize.basinhopping(
-            target, params, T=100, niter=10000, stepsize=max(params),
+            target, params, T=100, niter=10000, stepsize=0.5,
             minimizer_kwargs=dict(method="L-BFGS-B",
                                   bounds=[[0, 1] for i in params],
-                                  options={'eps': 1e-4, 'ftol': 1e-6}))
+                                  options={'eps': 1e-5, 'ftol': 1e-6}))
 #            target, params, T=100, niter=10000,
     out = dict(zip(pnames, opt['x']))
-    out[base_currency] = cc[base_currency]
+    out[base_currency] = 1 - sum(out.values())
     return target(opt['x']), out
 
 
